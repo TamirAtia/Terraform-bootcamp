@@ -60,10 +60,10 @@ variable "vm_size" {
   description = "Virtual machine size"
 }
 
-# variable "postgresql_name_server" {
-#   type = string
-#   description = "Postgersql name"
-# }
+variable "postgresql_name_server" {
+  type = string
+  description = "Postgersql name"
+}
 
 # variable "username_db" {
 #   type        = string

@@ -30,7 +30,7 @@ resource "azurerm_subnet" "private_subnet" {
   address_prefixes     = [var.subnet_private_prefix]
 }
 
-#***********public ip for wev and LB************
+#***********public ip for web and LB************
 resource "azurerm_public_ip" "web_public_ip" {
   name                = var.web_public_ip_name
   resource_group_name = azurerm_resource_group.rg_week5.name
@@ -94,7 +94,7 @@ resource "azurerm_lb_rule" "RuleA" {
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.LB_backend_add_pool.id]
 }
 
-# *******************scale set configuration*************
+# *******************scale set virtual machine configuration*************
 resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
   name                            = "scale-set"
   resource_group_name             = azurerm_resource_group.rg_week5.name
@@ -105,6 +105,8 @@ resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
   admin_password                  = var.admin_password
   upgrade_mode                    = "Automatic"
   disable_password_authentication = false
+
+  custom_data = filebase64("AppBash.sh")
 
   source_image_reference {
     publisher = "Canonical"
@@ -127,22 +129,17 @@ resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
       primary                                = true
       subnet_id                              = azurerm_subnet.public_subnet.id
       load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.LB_backend_add_pool.id]
-
+      
     }
   }
   depends_on = [
     azurerm_virtual_network.vnet
   ]
+  lifecycle { 
+    ignore_changes = [instances]
+  }
 }
 
-resource "azurerm_availability_set" "availability_set" {
-  name                         = "${var.webAppPrefix}-AVset"
-  resource_group_name          = azurerm_resource_group.rg_week5.name
-  location                     = azurerm_resource_group.rg_week5.location
-  platform_fault_domain_count  = 2
-  platform_update_domain_count = 2
-  managed                      = true
-}
 
 #***************NSG for the application*****************
 resource "azurerm_network_security_group" "App-NSG" {
@@ -174,6 +171,69 @@ resource "azurerm_network_security_group" "App-NSG" {
     destination_address_prefix = "*"
   }
 }
+#******************autoscaling*************
+resource "azurerm_monitor_autoscale_setting" "AutoScaling" {
+  name                = "AutoScaling"
+  resource_group_name = azurerm_resource_group.rg_week5.name
+  location            = azurerm_resource_group.rg_week5.location
+  target_resource_id  = azurerm_linux_virtual_machine_scale_set.scale_set.id
+
+  profile {
+    name = "Profile"
+
+    capacity {
+      default = 2
+      minimum = 1
+      maximum = 3
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = azurerm_linux_virtual_machine_scale_set.scale_set.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "GreaterThan"
+        threshold          = 75
+        metric_namespace   = "linux.compute/virtualmachinescalesets"
+        dimensions {
+          name     = "AppName"
+          operator = "Equals"
+          values   = ["App1"]
+        }
+      }
+
+      scale_action {
+        direction = "Increase"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT1M"
+      }
+    }
+
+    rule {
+      metric_trigger {
+        metric_name        = "Percentage CPU"
+        metric_resource_id = azurerm_linux_virtual_machine_scale_set.scale_set.id
+        time_grain         = "PT1M"
+        statistic          = "Average"
+        time_window        = "PT5M"
+        time_aggregation   = "Average"
+        operator           = "LessThan"
+        threshold          = 25
+      }
+
+      scale_action {
+        direction = "Decrease"
+        type      = "ChangeCount"
+        value     = "1"
+        cooldown  = "PT1M"
+      }
+    }
+  }
+}
 
 #*************associate between the subnet & NSG
 resource "azurerm_subnet_network_security_group_association" "nsg_association" {
@@ -182,6 +242,48 @@ resource "azurerm_subnet_network_security_group_association" "nsg_association" {
   depends_on = [
     azurerm_network_security_group.App-NSG
   ]
+}
+
+#**********network interface for database***********
+resource "azurerm_network_interface" "DB-nic" {
+  name                = "${var.postgresql_name_server}-nic"
+  location            = azurerm_resource_group.rg_week5.location
+  resource_group_name = azurerm_resource_group.rg_week5.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.private_subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+# *******************scale set virtual machine configuration*************
+resource "azurerm_linux_virtual_machine" "database" {
+  name                            = var.postgresql_name_server
+  resource_group_name             = azurerm_resource_group.rg_week5.name
+  location                        = azurerm_resource_group.rg_week5.location
+  size                            = "Standard_F2"
+  admin_username                  = var.admin_username
+  admin_password                  = var.admin_password
+  disable_password_authentication = false
+
+  network_interface_ids = [
+    azurerm_network_interface.DB-nic.id,
+  ]
+
+  custom_data = filebase64("DbBash.sh")
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
 }
 
 
