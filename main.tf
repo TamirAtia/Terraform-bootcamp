@@ -4,42 +4,52 @@ resource "azurerm_resource_group" "rg_week5" {
   location = var.location
 }
 
-
-#***********************vnet*******************
-resource "azurerm_virtual_network" "vnet" {
-  name                = var.virtual_network_name
-  address_space       = [var.address_space]
-  location            = azurerm_resource_group.rg_week5.location
+module "network" {
+  source = "./modules/Network"
   resource_group_name = azurerm_resource_group.rg_week5.name
+  location = azurerm_resource_group.rg_week5.location
+  virtual_network_name = var.virtual_network_name
+  address_space = var.address_space
+  subnet_private_prefix = var.subnet_private_prefix
+  subnet_public_prefix = var.subnet_public_prefix
+  web_public_ip_name =var.web_public_ip_name
+
 }
+# #***********************vnet*******************
+# resource "azurerm_virtual_network" "vnet" {
+#   name                = var.virtual_network_name
+#   address_space       = [var.address_space]
+#   location            = azurerm_resource_group.rg_week5.location
+#   resource_group_name = azurerm_resource_group.rg_week5.name
+# }
 
 
-#****** Create a subnet public and privet************
-resource "azurerm_subnet" "public_subnet" {
-  name                 = "public-subnet"
-  resource_group_name  = azurerm_resource_group.rg_week5.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_public_prefix]
-}
+# #****** Create a subnet public and privet************
+# resource "azurerm_subnet" "public_subnet" {
+#   name                 = "public-subnet"
+#   resource_group_name  = azurerm_resource_group.rg_week5.name
+#   virtual_network_name = azurerm_virtual_network.vnet.name
+#   address_prefixes     = [var.subnet_public_prefix]
+# }
 
 
-resource "azurerm_subnet" "private_subnet" {
-  name                 = "private-subnet"
-  resource_group_name  = azurerm_resource_group.rg_week5.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes     = [var.subnet_private_prefix]
-}
+# resource "azurerm_subnet" "private_subnet" {
+#   name                 = "private-subnet"
+#   resource_group_name  = azurerm_resource_group.rg_week5.name
+#   virtual_network_name = azurerm_virtual_network.vnet.name
+#   address_prefixes     = [var.subnet_private_prefix]
+# }
 
 #***********public ip for web and LB************
-resource "azurerm_public_ip" "web_public_ip" {
-  name                = var.web_public_ip_name
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  location            = azurerm_resource_group.rg_week5.location
-  allocation_method   = "Static"
-  depends_on = [
-    azurerm_resource_group.rg_week5
-  ]
-}
+# resource "azurerm_public_ip" "web_public_ip" {
+#   name                = var.web_public_ip_name
+#   resource_group_name = azurerm_resource_group.rg_week5.name
+#   location            = azurerm_resource_group.rg_week5.location
+#   allocation_method   = "Static"
+#   depends_on = [
+#     azurerm_resource_group.rg_week5
+#   ]
+# }
 
 resource "azurerm_public_ip" "LB_IP" {
   name                = "Public-IP-LB"
@@ -127,13 +137,13 @@ resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
     ip_configuration {
       name                                   = "internal"
       primary                                = true
-      subnet_id                              = azurerm_subnet.public_subnet.id
+      subnet_id                              = module.network.public_subnet_id
       load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.LB_backend_add_pool.id]
       
     }
   }
   depends_on = [
-    azurerm_virtual_network.vnet
+    var.virtual_network_name
   ]
   lifecycle { 
     ignore_changes = [instances]
@@ -146,7 +156,7 @@ resource "azurerm_network_security_group" "App-NSG" {
   name                = "myNetworkSecurityGroupApp"
   location            = azurerm_resource_group.rg_week5.location
   resource_group_name = azurerm_resource_group.rg_week5.name
-  depends_on          = [azurerm_resource_group.rg_week5, azurerm_subnet.public_subnet]
+  depends_on          = [azurerm_resource_group.rg_week5, module.network.public_subnet_id]
 
   security_rule {
     name                       = "SSH"
@@ -237,7 +247,7 @@ resource "azurerm_monitor_autoscale_setting" "AutoScaling" {
 
 #*************associate between the subnet & NSG
 resource "azurerm_subnet_network_security_group_association" "nsg_association" {
-  subnet_id                 = azurerm_subnet.public_subnet.id
+  subnet_id                 = module.network.public_subnet_id
   network_security_group_id = azurerm_network_security_group.App-NSG.id
   depends_on = [
     azurerm_network_security_group.App-NSG
@@ -252,7 +262,7 @@ resource "azurerm_network_interface" "DB-nic" {
 
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.private_subnet.id
+    subnet_id                     = module.network.private_subnet_id
     private_ip_address_allocation = "Dynamic"
   }
 }

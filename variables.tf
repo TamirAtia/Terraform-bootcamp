@@ -65,18 +65,3 @@ variable "postgresql_name_server" {
   description = "Postgersql name"
 }
 
-# variable "username_db" {
-#   type        = string
-#   description = "Username PostgreSQL"
-# }
-
-# variable "password_db" {
-#   type        = string
-#   description = "Password  PostgreSQL "
-# }
-
-# variable "postgresql_firewall_name" {
-#   type = string
-#   description = "PostgreSQL firewall name"
-# }
-
