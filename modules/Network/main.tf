@@ -15,7 +15,6 @@ resource "azurerm_subnet" "public_subnet" {
   address_prefixes     = [var.subnet_public_prefix]
 }
 
-
 resource "azurerm_subnet" "private_subnet" {
   name                 = "private-subnet"
   resource_group_name  = var.resource_group_name
@@ -76,7 +75,6 @@ resource "azurerm_subnet_network_security_group_association" "nsg_association" {
     azurerm_network_security_group.App-NSG
   ]
 }
-
 #******************************************************
 
 #**********network interface for database***********

@@ -4,6 +4,8 @@
 # tf state files
 *.tfstate
 *.tfstate.*
+*.tfvars
+
 
 AppBash.sh
 DbBash.sh
