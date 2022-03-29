@@ -3,106 +3,32 @@ resource "azurerm_resource_group" "rg_week5" {
   name     = var.resource_group_name
   location = var.location
 }
+#******************************************************
 
-module "network" {
+#*****************Network module***************
+module "Network" {
   source = "./modules/Network"
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  location = azurerm_resource_group.rg_week5.location
-  virtual_network_name = var.virtual_network_name
-  address_space = var.address_space
-  subnet_private_prefix = var.subnet_private_prefix
-  subnet_public_prefix = var.subnet_public_prefix
-  web_public_ip_name =var.web_public_ip_name
+
+  resource_group_name    = azurerm_resource_group.rg_week5.name
+  location               = azurerm_resource_group.rg_week5.location
+  virtual_network_name   = var.virtual_network_name
+  address_space          = var.address_space
+  subnet_private_prefix  = var.subnet_private_prefix
+  subnet_public_prefix   = var.subnet_public_prefix
+  web_public_ip_name     = var.web_public_ip_name
+  postgresql_name_server = var.postgresql_name_server
 
 }
-# #***********************vnet*******************
-# resource "azurerm_virtual_network" "vnet" {
-#   name                = var.virtual_network_name
-#   address_space       = [var.address_space]
-#   location            = azurerm_resource_group.rg_week5.location
-#   resource_group_name = azurerm_resource_group.rg_week5.name
-# }
+#******************************************************
 
+#*****************LoadBalancer module***************
+module "LoadBalancer" {
+  source = "./modules/LoadBalancer"
 
-# #****** Create a subnet public and privet************
-# resource "azurerm_subnet" "public_subnet" {
-#   name                 = "public-subnet"
-#   resource_group_name  = azurerm_resource_group.rg_week5.name
-#   virtual_network_name = azurerm_virtual_network.vnet.name
-#   address_prefixes     = [var.subnet_public_prefix]
-# }
-
-
-# resource "azurerm_subnet" "private_subnet" {
-#   name                 = "private-subnet"
-#   resource_group_name  = azurerm_resource_group.rg_week5.name
-#   virtual_network_name = azurerm_virtual_network.vnet.name
-#   address_prefixes     = [var.subnet_private_prefix]
-# }
-
-#***********public ip for web and LB************
-# resource "azurerm_public_ip" "web_public_ip" {
-#   name                = var.web_public_ip_name
-#   resource_group_name = azurerm_resource_group.rg_week5.name
-#   location            = azurerm_resource_group.rg_week5.location
-#   allocation_method   = "Static"
-#   depends_on = [
-#     azurerm_resource_group.rg_week5
-#   ]
-# }
-
-resource "azurerm_public_ip" "LB_IP" {
-  name                = "Public-IP-LB"
+  resource_group_name = azurerm_resource_group.rg_week5.name
   location            = azurerm_resource_group.rg_week5.location
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  allocation_method   = "Static"
-  depends_on          = [azurerm_resource_group.rg_week5]
 }
-
-#***********load Balancer configuration*********
-resource "azurerm_lb" "LoadBalancer" {
-  name                = "LoadBalancer"
-  location            = azurerm_resource_group.rg_week5.location
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  depends_on = [
-    azurerm_public_ip.LB_IP
-  ]
-  frontend_ip_configuration {
-    name                 = "PublicIPAddress"
-    public_ip_address_id = azurerm_public_ip.LB_IP.id
-  }
-}
-
-resource "azurerm_lb_backend_address_pool" "LB_backend_add_pool" {
-  loadbalancer_id = azurerm_lb.LoadBalancer.id
-  name            = "LB_BackEndAddressPool"
-  depends_on = [
-    azurerm_lb.LoadBalancer
-  ]
-
-}
-
-resource "azurerm_lb_probe" "ProbeA" {
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  loadbalancer_id     = azurerm_lb.LoadBalancer.id
-  name                = "probeA"
-  port                = 8080
-  protocol            = "Tcp"
-  depends_on = [
-    azurerm_lb.LoadBalancer
-  ]
-}
-
-resource "azurerm_lb_rule" "RuleA" {
-  resource_group_name            = azurerm_resource_group.rg_week5.name
-  loadbalancer_id                = azurerm_lb.LoadBalancer.id
-  name                           = "RuleA"
-  protocol                       = "Tcp"
-  frontend_port                  = 8080
-  backend_port                   = 8080
-  frontend_ip_configuration_name = "PublicIPAddress"
-  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.LB_backend_add_pool.id]
-}
+#******************************************************
 
 # *******************scale set virtual machine configuration*************
 resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
@@ -137,50 +63,20 @@ resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
     ip_configuration {
       name                                   = "internal"
       primary                                = true
-      subnet_id                              = module.network.public_subnet_id
-      load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.LB_backend_add_pool.id]
-      
+      subnet_id                              = module.Network.public_subnet_id
+      load_balancer_backend_address_pool_ids = [module.LoadBalancer.LB_backend_add_pool_id]
+
     }
   }
   depends_on = [
     var.virtual_network_name
   ]
-  lifecycle { 
+  lifecycle {
     ignore_changes = [instances]
   }
 }
+#******************************************************
 
-
-#***************NSG for the application*****************
-resource "azurerm_network_security_group" "App-NSG" {
-  name                = "myNetworkSecurityGroupApp"
-  location            = azurerm_resource_group.rg_week5.location
-  resource_group_name = azurerm_resource_group.rg_week5.name
-  depends_on          = [azurerm_resource_group.rg_week5, module.network.public_subnet_id]
-
-  security_rule {
-    name                       = "SSH"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*" //need to add IP
-    destination_address_prefix = "*"
-  }
-  security_rule {
-    name                       = "Port_8080"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "8080"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-}
 #******************autoscaling*************
 resource "azurerm_monitor_autoscale_setting" "AutoScaling" {
   name                = "AutoScaling"
@@ -244,28 +140,7 @@ resource "azurerm_monitor_autoscale_setting" "AutoScaling" {
     }
   }
 }
-
-#*************associate between the subnet & NSG
-resource "azurerm_subnet_network_security_group_association" "nsg_association" {
-  subnet_id                 = module.network.public_subnet_id
-  network_security_group_id = azurerm_network_security_group.App-NSG.id
-  depends_on = [
-    azurerm_network_security_group.App-NSG
-  ]
-}
-
-#**********network interface for database***********
-resource "azurerm_network_interface" "DB-nic" {
-  name                = "${var.postgresql_name_server}-nic"
-  location            = azurerm_resource_group.rg_week5.location
-  resource_group_name = azurerm_resource_group.rg_week5.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = module.network.private_subnet_id
-    private_ip_address_allocation = "Dynamic"
-  }
-}
+#******************************************************
 
 # *******************scale set virtual machine configuration*************
 resource "azurerm_linux_virtual_machine" "database" {
@@ -278,7 +153,7 @@ resource "azurerm_linux_virtual_machine" "database" {
   disable_password_authentication = false
 
   network_interface_ids = [
-    azurerm_network_interface.DB-nic.id,
+    module.Network.DB-nic-id,
   ]
 
   custom_data = filebase64("DbBash.sh")
@@ -295,5 +170,5 @@ resource "azurerm_linux_virtual_machine" "database" {
     version   = "latest"
   }
 }
-
+#******************************************************
 

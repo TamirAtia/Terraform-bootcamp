@@ -61,7 +61,7 @@ variable "vm_size" {
 }
 
 variable "postgresql_name_server" {
-  type = string
+  type        = string
   description = "Postgersql name"
 }
 
