@@ -29,20 +29,6 @@ variable "subnet_private_prefix" {
   description = "Private subnet"
 }
 
-variable "web_public_ip_name" {
-  type        = string
-  description = "Public IP name"
-}
-
-variable "webAppPrefix" {
-  description = "The prefix which should be used for all resources connected to the web app."
-  default     = "WA"
-}
-
-variable "DBPrefix" {
-  description = "The prefix which should be used for all resources connected to the database."
-  default     = "DB"
-}
 
 variable "admin_username" {
   type        = string
@@ -55,13 +41,18 @@ variable "admin_password" {
   description = "Admin password for VM"
 }
 
-variable "vm_size" {
-  type        = string
-  description = "Virtual machine size"
-}
 
-variable "postgresql_name_server" {
+variable "postgres_administrator_login" {
   type        = string
   description = "Postgersql name"
 }
 
+variable "postgres_administrator_password" {
+  type        = string
+  description = "Password for Postgersql"
+}
+
+variable "num_of_instances" {
+  type        = number
+  description = "The number of instances for the VM scale-set"
+}

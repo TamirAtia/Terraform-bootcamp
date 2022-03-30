@@ -28,13 +28,6 @@ variable "subnet_private_prefix" {
   description = "Private subnet"
 }
 
-variable "web_public_ip_name" {
-  type        = string
-  description = "Public IP name"
-}
 
-variable "postgresql_name_server" {
-  type        = string
-  description = "Postgersql name"
-}
+
 
