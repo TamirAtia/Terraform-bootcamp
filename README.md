@@ -25,6 +25,10 @@ admin_password
 postgres_administrator_login    
 postgres_administrator_password 
 myIP_Address
+okta_org_url
+okta_secret
+okta_client_id
+okta_key
 ```
 
 
