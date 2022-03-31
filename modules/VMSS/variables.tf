@@ -38,3 +38,32 @@ variable "virtual_network_name" {
   type = string
   description = "Virtual Network name"
 }
+
+variable "host_url" {
+  
+}
+
+variable "pg_host" {
+  
+}
+
+variable "okta_org_url" {
+  
+}
+
+variable "okta_client_id" {
+  
+}
+
+variable "okta_secret" {
+  
+}
+variable "pg_user" {
+  
+}
+variable "pg_pass" {
+  
+}
+variable "okta_key" {
+  type = string
+}

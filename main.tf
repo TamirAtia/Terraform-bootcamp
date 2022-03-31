@@ -56,5 +56,14 @@ module "VMSS" {
   LB_backend_add_pool_id = module.LoadBalancer.LB_backend_add_pool_id
   virtual_network_name   = var.virtual_network_name
 
+  host_url       = module.LoadBalancer.LoadBalacer_ip_address
+  pg_host        = "${module.PostgerSql.azurerm_postgresql_flexible_server_name}.postgres.database.azure.com"
+  okta_org_url   = var.okta_org_url
+  okta_client_id = var.okta_client_id
+  okta_secret    = var.okta_secret
+  pg_user        = var.postgres_administrator_login
+  pg_pass        = var.postgres_administrator_password
+  okta_key       = var.okta_key
+
 }
 #******************************************************

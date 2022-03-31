@@ -10,7 +10,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "scale_set" {
   upgrade_mode                    = "Automatic"
   disable_password_authentication = false
 
-  custom_data = filebase64("AppBash.sh")
+  custom_data = base64encode(templatefile("AppBash.tftpl",local.vars))
 
   source_image_reference {
     publisher = "Canonical"

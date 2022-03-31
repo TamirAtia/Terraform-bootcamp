@@ -61,3 +61,28 @@ variable "myIP_Address" {
   type        = string
   description = "IP address to connect ssh to the VM"
 }
+
+
+variable "okta_org_url" {
+
+}
+
+variable "okta_client_id" {
+
+}
+
+variable "okta_secret" {
+
+}
+
+variable "pg_user" {
+
+}
+
+variable "pg_pass" {
+
+}
+
+variable "okta_key" {
+
+}
