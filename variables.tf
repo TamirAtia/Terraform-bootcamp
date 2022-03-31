@@ -75,14 +75,6 @@ variable "okta_secret" {
 
 }
 
-variable "pg_user" {
-
-}
-
-variable "pg_pass" {
-
-}
-
 variable "okta_key" {
 
 }
