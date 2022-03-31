@@ -36,7 +36,7 @@ resource "azurerm_network_security_group" "Web-Tier-NSG" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = "109.186.136.124"
+    source_address_prefix      = var.myIP_Address
     destination_address_prefix = "*"
 
   }

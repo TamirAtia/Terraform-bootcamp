@@ -15,6 +15,7 @@ module "Network" {
   address_space         = var.address_space
   subnet_private_prefix = var.subnet_private_prefix
   subnet_public_prefix  = var.subnet_public_prefix
+  myIP_Address          = var.myIP_Address
 
 
 }

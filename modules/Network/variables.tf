@@ -29,5 +29,8 @@ variable "subnet_private_prefix" {
 }
 
 
-
+variable "myIP_Address" {
+  type = string
+  description = "IP address to connect ssh to the VM"
+}
 

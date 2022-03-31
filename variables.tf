@@ -56,3 +56,8 @@ variable "num_of_instances" {
   type        = number
   description = "The number of instances for the VM scale-set"
 }
+
+variable "myIP_Address" {
+  type        = string
+  description = "IP address to connect ssh to the VM"
+}
